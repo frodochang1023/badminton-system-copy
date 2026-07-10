@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>通用棄將羽球管理系統</title>
+    <!-- 引入 Tailwind CSS 確保行動裝置 UI 美觀與觸控優化 -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        body {
+            -webkit-tap-highlight-color: transparent;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen text-gray-800">
+
+    <!-- 全局頂部導覽列 -->
+    <header class="bg-emerald-600 text-white p-4 sticky top-0 z-40 shadow-md">
+        <div class="max-w-md mx-auto flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-bold tracking-wide">通用棄將羽球管理系統</h1>
+                <p class="text-xs text-emerald-100 mt-0.5">每週六 10:00 ~ 12:00 | 每場2小時費用 1100元</p>
+            </div>
+            <div id="userInfo" class="hidden">
+                <div class="bg-emerald-700/60 px-3 py-1.5 rounded-xl text-center border border-emerald-500/30">
+                    <span id="currentUserName" class="block text-sm font-semibold leading-tight">Frodo</span>
+                    <button onclick="logout()" class="text-xs text-emerald-300 hover:text-white underline font-medium mt-0.5 block mx-auto">登出</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主內容容器 -->
+    <main class="max-w-md mx-auto p-3 pb-24">
+        
+        <!-- 登入彈窗 / 遮罩 (初始顯示) -->
+        <div id="loginModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl transition-all border border-gray-100 animate-fade-in">
+                <h2 class="text-2xl font-bold text-center text-gray-900 mb-1">通用棄將羽球管理系統</h2>
+                <p class="text-xs text-center text-gray-500 mb-6">每週六 10:00 ~ 12:00 | 每場2小時費用 1100元</p>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">選擇您的姓名</label>
+                        <select id="loginUser" class="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 appearance-none">
+                            <!-- 透過 JS 動態載入使用者 -->
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">密碼</label>
+                        <input type="password" id="loginPassword" value="1234" class="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 tracking-widest" placeholder="••••">
+                    </div>
+                    <button onclick="login()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3.5 rounded-xl transition shadow-lg shadow-emerald-600/20 active:scale-[0.98] mt-2">
+                        進入系統
+                    </button>
+                    <p class="text-xs text-center text-gray-400 mt-4">管理者登入後會自動顯示管理功能</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 系統主功能分頁標籤 (登入後顯示) -->
+        <div id="mainSystem" class="hidden space-y-4">
+            
+            <!-- 導覽頁籤按鈕組 -->
+            <div class="bg-white p-1.5 rounded-xl shadow-sm border border-gray-200/60 flex space-x-1 sticky top-16 z-30">
+                <button onclick="switchTab('register')" id="tab-register" class="flex-1 py-2.5 text-center font-medium rounded-lg text-sm transition-all">報名</button>
+                <button onclick="switchTab('deposit')" id="tab-deposit" class="flex-1 py-2.5 text-center font-medium rounded-lg text-sm transition-all">儲值資訊</button>
+                <button onclick="switchTab('public')" id="tab-public" class="flex-1 py-2.5 text-center font-medium rounded-lg text-sm transition-all">公費資訊</button>
+                <button onclick="switchTab('intro')" id="tab-intro" class="flex-1 py-2.5 text-center font-medium rounded-lg text-sm transition-all">說明</button>
+            </div>
+
+            <!--================ 介面 1: 報名 ================-->
+            <div id="content-register" class="tab-content hidden space-y-4">
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                    <div class="flex justify-between items-center mb-4">
+                        <select id="dateSelector" onchange="changeDate()" class="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-emerald-700 font-bold focus:outline-none">
+                            <option value="2026-07-11">2026/07/</option>
+                        </select>
+                        <span id="lockStatusBadge" class="text-xs px-2.5 py-1 rounded-full font-medium"></span>
+                    </div>
+
+                    <h3 id="currentWeekTitle" class="text-lg font-bold text-gray-900 mb-3">2026-07-11 (週六)</h3>
+                    
+                    <!-- 報名觸控切換區 -->
+                    <div class="flex items-center space-x-3 mb-4">
+                        <button id="btnJoin" onclick="toggleAttendance(true)" class="flex-1 py-3 px-4 border rounded-xl font-medium flex items-center justify-center space-x-2 transition active:scale-[0.98]">
+                            <span class="w-4 h-4 rounded-full border flex items-center justify-center text-xs" id="radioJoin"></span>
+                            <span>10:00 ~ 12:00</span>
+                        </button>
+                        <button id="btnLeave" onclick="toggleAttendance(false)" class="flex-1 py-3 px-4 border rounded-xl font-medium flex items-center justify-center space-x-2 transition active:scale-[0.98]">
+                            <span class="font-mono text-xs">v</span>
+                            <span>本週不參加</span>
+                        </button>
+                    </div>
+
+                    <!-- 人數動態提醒區 -->
+                    <div id="alertBanner" class="p-3 rounded-xl border mb-4 text-sm leading-relaxed"></div>
+
+                    <!-- 本週報名名單列表 -->
+                    <div class="overflow-hidden border border-gray-100 rounded-xl">
+                        <table class="w-full text-left border-collapse bg-white text-sm">
+                            <thead>
+                                <tr class="bg-gray-50 border-b border-gray-100 text-gray-500 font-medium">
+                                    <th class="p-3">成員</th>
+                                    <th class="p-3 text-center">身份</th>
+                                    <th class="p-3 text-center">時段</th>
+                                    <th class="p-3 text-right">費用明細</th>
+                                    <th class="p-3 text-right">應付</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendanceTableBody" class="divide-y divide-gray-50">
+                                <!-- JS 動態渲染列 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!--================ 介面 2: 儲值資訊 ================-->
+            <div id="content-deposit" class="tab-content hidden">
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-4">
+                    <h3 class="text-lg font-bold text-gray-900">[儲值資訊]</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead>
+                                <tr class="bg-gray-50 text-gray-500 border-b border-gray-100">
+                                    <th class="p-3 font-medium">姓名</th>
+                                    <th class="p-3 font-medium text-right">剩餘儲值金額</th>
+                                    <th class="p-3 font-medium text-center">歷史記錄</th>
+                                    <th class="p-3 font-medium text-center">會員方案</th>
+                                </tr>
+                            </thead>
+                            <tbody id="depositTableBody" class="divide-y divide-gray-50">
+                                <!-- JS 動態渲染 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!--================ 介面 3: 公費資訊 ================-->
+            <div id="content-public" class="tab-content hidden space-y-4">
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                    <h3 class="text-base font-semibold text-gray-500 mb-1">[費用] 公費帳戶概覽</h3>
+                    <p class="text-xs text-gray-400 mb-4">目前公費餘額</p>
+                    <div class="text-3xl font-extrabold text-emerald-600 mb-6 tracking-tight">
+                        <span id="publicBalance">8,730</span> <span class="text-xl font-normal text-gray-500">元</span>
+                    </div>
+
+                    <h4 class="text-sm font-bold text-gray-700 mb-3 flex items-center">
+                        <span>收支記錄（由新到舊）</span>
+                    </h4>
+                    <div class="space-y-2.5" id="publicLogsContainer">
+                        <!-- JS 動態渲染 -->
+                    </div>
+                </div>
+            </div>
+
+            <!--================ 介面 4: 說明 ================-->
+            <div id="content-intro" class="tab-content hidden">
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-5 text-sm leading-relaxed">
+                    <div>
+                        <h3 class="text-base font-bold text-gray-900 border-l-4 border-emerald-500 pl-2 mb-3">[費用說明]</h3>
+                        <div class="space-y-3 text-gray-600 pl-1">
+                            <div>
+                                <p class="font-semibold text-gray-800">1. 季租會員</p>
+                                <ul class="list-none pl-4 space-y-1 mt-1 text-gray-600">
+                                    <li>1.1 會員球場是利用季繳和沛傑租用（1100 元 / 2 小時）</li>
+                                    <li>1.2 初次加入會員需繳交會員費 1500 元</li>
+                                    <li>1.3 會員費用會抵消每次參賽的費用（當日費用由出席者均分）</li>
+                                    <li>1.4 若當日出席者未滿 4 人，則所有季租會員一同均分 1100 元</li>
+                                    <li>1.5 後續季租會員需確保儲值金額需大於 0</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-gray-800">2. 日租會員</p>
+                                <ul class="list-none pl-4 space-y-1 mt-1 text-gray-600">
+                                    <li>2.1 日租會員是採用日繳費用，球場計算的費用是（1200 元 / 2 小時）(此同實際和沛傑臨租的費用)</li>
+                                    <li>2.2 實際費用由出席者均分</li>
+                                </ul>
+                            </div>
+                            <div class="bg-amber-50/70 border border-amber-100 p-3 rounded-xl">
+                                <p class="font-bold text-amber-800 mb-1">3. 費用試算範例</p>
+                                <p class="text-xs text-amber-700">假設當天出席人數為 7 人（季租會員 x5，日租會員 x2）：</p>
+                                <ul class="list-disc pl-4 mt-1 text-xs text-amber-800 space-y-0.5 font-medium">
+                                    <li>每個日租會員費用：1200 ÷ 7 = 172 元（無條件進位）</li>
+                                    <li>每個季租會員費用：(1100 − 172 − 172) ÷ 5 = 152 元（無條件進位）</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="border-gray-100">
+
+                    <div>
+                        <h3 class="text-base font-bold text-gray-900 border-l-4 border-emerald-500 pl-2 mb-2">[操作事項說明]</h3>
+                        <ul class="list-none pl-3 text-gray-600 space-y-1.5">
+                            <li class="font-medium text-gray-800">1. 報名可修改的時間為當日星期六 23:59前。</li>
+                            <li class="text-xs bg-gray-50 p-2.5 rounded-lg border border-gray-200/60 text-gray-500">
+                                <strong class="text-gray-700">例如：</strong>7/4(六) 23:59前，可修改未來(包含7/4的所有報名資訊)；但當時間來到7/5(日)時，7/4的報名時段就會被鎖住無法做變更了。
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- 核心數據與控制 JavaScript 邏輯 -->
+    <script>
+        // 模擬當前環境系統時間為 2026/07/10 (週五)，方便測試截止規則
+        let SYSTEM_TIME = new Date("2026-07-10T12:00:00"); 
+
+        // 成員初始核心數據庫
+        let members = [
+            { id: 1, name: "Frodo", type: "季租", deposit: 2500, status: { "2026-07-04": true, "2026-07-11": false }, tag: "管理會員" },
+            { id: 2, name: "June", type: "季租", deposit: 1390, status: { "2026-07-04": true, "2026-07-11": false }, tag: "財務會員" },
+            { id: 3, name: "Frank", type: "季租", deposit: 1390, status: { "2026-07-04": false, "2026-07-11": false }, tag: "公關會員" },
+            { id: 4, name: "Echo", type: "季租", deposit: 1800, status: { "2026-07-04": true, "2026-07-11": false }, tag: "普通會員" },
+            { id: 5, name: "Sam", type: "季租", deposit: 950, status: { "2026-07-04": true, "2026-07-11": false }, tag: "普通會員" },
+            { id: 6, name: "GuestA", type: "日租", deposit: 0, status: { "2026-07-04": true, "2026-07-11": false }, tag: "外部臨租" },
+            { id: 7, name: "GuestB", type: "日租", deposit: 0, status: { "2026-07-04": true, "2026-07-11": false }, tag: "外部臨租" }
+        ];
+
+        // 擴充剩餘季租會員基數以符合截圖中的「全體 15 位季租會員」設定
+        for (let i = 8; i <= 17; i++) {
+            members.push({
+                id: i,
+                name: `季租會員${i-3}`,
+                type: "季租",
+                deposit: 1200,
+                status: { "2026-07-04": false, "2026-07-11": false },
+                tag: "普通會員"
+            });
+        }
+
+        // 公費歷史流水帳
+        let publicLogs = [
+            { date: "2026/7/4", type: "入帳", desc: "[其他] 7/4零打結餘", amount: 30 },
+            { date: "2026/7/4", type: "入帳", desc: "Echo 儲值", amount: 1500 }
+        ];
+        let publicBalance = 8730;
+
+        let currentUser = null;
+        let selectedDate = "2026-07-11";
+
+        // 初始化載入
+        window.onload = function() {
+            const selectEl = document.getElementById("loginUser");
+            selectEl.innerHTML = members.map(m => `<option value="${m.name}">${m.name} (${m.type})</option>`).join('');
+            
+            // 建立日期選擇器項目
+            const dateSelector = document.getElementById("dateSelector");
+            dateSelector.innerHTML = `
+                <option value="2026-07-11">2026/07/11 (本週)</option>
+                <option value="2026-07-04">2026/07/04 (上週)</option>
+            `;
+            dateSelector.value = selectedDate;
+        };
+
+        // 登入程序
+        function login() {
+            const userName = document.getElementById("loginUser").value;
+            currentUser = members.find(m => m.name === userName);
+            
+            document.getElementById("loginModal").classList.add("hidden");
+            document.getElementById("mainSystem").classList.remove("hidden");
+            document.getElementById("userInfo").classList.remove("hidden");
+            document.getElementById("currentUserName").innerText = currentUser.name;
+            
+            switchTab('register');
+        }
+
+        // 登出程序
+        function logout() {
+            currentUser = null;
+            document.getElementById("loginModal").classList.remove("hidden");
+            document.getElementById("mainSystem").classList.add("hidden");
+            document.getElementById("userInfo").classList.add("hidden");
+        }
+
+        // 切換主頁籤
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`content-${tabId}`).classList.remove('hidden');
+            
+            document.querySelectorAll('[id^="tab-"]').forEach(btn => {
+                btn.classList.remove('bg-emerald-600', 'text-white', 'shadow-sm', 'bg-white', 'text-gray-500');
+            });
+            
+            const activeBtn = document.getElementById(`tab-${tabId}`);
+            activeBtn.classList.add('bg-emerald-600', 'text-white', 'shadow-sm');
+            
+            if (tabId === 'register') renderRegisterTab();
+            if (tabId === 'deposit') renderDepositTab();
+            if (tabId === 'public') renderPublicTab();
+        }
+
+        // 日期選擇變更
+        function changeDate() {
+            selectedDate = document.getElementById("dateSelector").value;
+            document.getElementById("currentWeekTitle").innerText = `${selectedDate} (週六)`;
+            renderRegisterTab();
+        }
+
+        // 檢查目標日期目前是否已被鎖定無法修改
+        function isDateLocked(targetDateStr) {
+            const targetDate = new Date(targetDateStr);
+            // 鎖定臨界點：目標週六當天 23:59:59 之後
+            const lockTime = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 23, 59, 59);
+            return SYSTEM_TIME > lockTime;
+        }
+
+        // 核心費率動態計算模組
+        function calculateFees(date) {
+            const attendees = members.filter(m => m.status[date] === true);
+            const totalCount = attendees.length;
+            const seasonMembers = members.filter(m => m.type === "季租");
+            const totalSeasonCount = seasonMembers.length;
+
+            const seasonAttendees = attendees.filter(m => m.type === "季租");
+            const dayAttendees = attendees.filter(m => m.type === "日租");
+
+            let alertText = "";
+            let alertClass = "";
+            let feeDetails = {};
+
+            // 規則 1.4: 出席人數未滿 4 人
+            if (totalCount < 4) {
+                alertClass = "bg-amber-50 border-amber-200 text-amber-800";
+                alertText = `[!] 出席人數不足（目前 ${totalCount} 人）- 場地費用由全體 ${totalSeasonCount} 位季租會員均分，日租會員本次免費`;
+                
+                const perSeasonFee = Math.ceil(1100 / totalSeasonCount);
+                
+                members.forEach(m => {
+                    if (m.type === "季租") {
+                        feeDetails[m.id] = { detail: `1100 / ${totalSeasonCount}人 (全體)`, cost: perSeasonFee };
+                    } else {
+                        feeDetails[m.id] = { detail: "人數不足免收", cost: 0 };
+                    }
+                });
+            } else {
+                // 正常或符合試算範例人數 >= 4 人
+                alertClass = "bg-emerald-50 border-emerald-100 text-emerald-800";
+                alertText = `[i] 目前出席人數正常（共 ${totalCount} 人：季租 ${seasonAttendees.length} 人，日租 ${dayAttendees.length} 人）`;
+
+                // 日租費用計算: 1200 / 總出席人數 (無條件進位)
+                const perDayFee = Math.ceil(1200 / totalCount);
+                
+                // 季租總和與分攤計算
+                const totalDayCover = perDayFee * dayAttendees.length;
+                const remainingSeasonPool = 1100 - totalDayCover;
+                
+                let perSeasonFee = 0;
+                if (seasonAttendees.length > 0) {
+                    // (1100 - 日租總繳) / 季租出席人數 (無條件進位)
+                    perSeasonFee = Math.ceil(remainingSeasonPool / seasonAttendees.length);
+                    if (perSeasonFee < 0) perSeasonFee = 0; // 避免溢抵扣變負數
+                }
+
+                members.forEach(m => {
+                    if (m.status[date]) {
+                        if (m.type === "日租") {
+                            feeDetails[m.id] = { detail: `1200 / ${totalCount}`, cost: perDayFee };
+                        } else {
+                            feeDetails[m.id] = { detail: `(1100 - ${totalDayCover}) / ${seasonAttendees.length}`, cost: perSeasonFee };
+                        }
+                    } else {
+                        feeDetails[m.id] = { detail: "未出席", cost: 0 };
+                    }
+                });
+            }
+
+            return { feeDetails, alertText, alertClass };
+        }
+
+        // 渲染 報名介面
+        function renderRegisterTab() {
+            const locked = isDateLocked(selectedDate);
+            const badge = document.getElementById("lockStatusBadge");
+            
+            if (locked) {
+                badge.innerText = "已結算鎖定";
+                badge.className = "text-xs px-2.5 py-1 rounded-full font-medium bg-rose-50 text-rose-600 border border-rose-100";
+                document.getElementById("btnJoin").disabled = true;
+                document.getElementById("btnLeave").disabled = true;
+                document.getElementById("btnJoin").style.opacity = "0.5";
+                document.getElementById("btnLeave").style.opacity = "0.5";
+            } else {
+                badge.innerText = "開放報名中";
+                badge.className = "text-xs px-2.5 py-1 rounded-full font-medium bg-emerald-50 text-emerald-600 border border-emerald-100";
+                document.getElementById("btnJoin").disabled = false;
+                document.getElementById("btnLeave").disabled = false;
+                document.getElementById("btnJoin").style.opacity = "1";
+                document.getElementById("btnLeave").style.opacity = "1";
+            }
+
+            // 更新當前使用者報名高亮按鈕狀態
+            const isJoining = currentUser.status[selectedDate] || false;
+            const btnJoin = document.getElementById("btnJoin");
+            const btnLeave = document.getElementById("btnLeave");
+            const radioJoin = document.getElementById("radioJoin");
+
+            if (isJoining) {
+                btnJoin.className = "flex-1 py-3 px-4 border-2 border-emerald-500 bg-emerald-50/50 text-emerald-700 font-bold rounded-xl flex items-center justify-center space-x-2 transition";
+                radioJoin.className = "w-4 h-4 rounded-full border-4 border-emerald-500 bg-white flex items-center justify-center text-xs";
+                btnLeave.className = "flex-1 py-3 px-4 border border-gray-200 bg-white text-gray-400 rounded-xl flex items-center justify-center space-x-2 transition";
+            } else {
+                btnJoin.className = "flex-1 py-3 px-4 border border-gray-200 bg-white text-gray-400 rounded-xl flex items-center justify-center space-x-2 transition";
+                radioJoin.className = "w-4 h-4 rounded-full border border-gray-300 bg-white flex items-center justify-center text-xs";
+                btnLeave.className = "flex-1 py-3 px-4 border-2 border-emerald-600 bg-emerald-600 text-white font-bold rounded-xl flex items-center justify-center space-x-2 transition shadow-md shadow-emerald-600/10";
+            }
+
+            // 計算費率
+            const { feeDetails, alertText, alertClass } = calculateFees(selectedDate);
+            const alertBanner = document.getElementById("alertBanner");
+            alertBanner.innerText = alertText;
+            alertBanner.className = `p-3 rounded-xl border mb-4 text-sm leading-relaxed ${alertClass}`;
+
+            // 生成報名表格內容
+            const tbody = document.getElementById("attendanceTableBody");
+            tbody.innerHTML = "";
+
+            members.forEach(m => {
+                const attending = m.status[selectedDate] || false;
+                const calc = feeDetails[m.id];
+                
+                // 處理特殊高亮行 (如果是當前登入者)
+                const isSelf = m.id === currentUser.id;
+                const rowBg = isSelf ? "bg-emerald-50/30 font-medium" : "";
+
+                const statusBadge = attending 
+                    ? `<span class="bg-emerald-100 text-emerald-800 text-xs px-2 py-0.5 rounded-full font-medium">10-12</span>` 
+                    : `<span class="bg-orange-50 text-orange-600 text-xs px-2 py-0.5 rounded-full font-medium">未報名</span>`;
+
+                const typeBadge = m.type === "季租"
+                    ? `<span class="bg-cyan-50 text-cyan-700 text-xs px-2 py-0.5 rounded-md border border-cyan-100">季租</span>`
+                    : `<span class="bg-purple-50 text-purple-700 text-xs px-2 py-0.5 rounded-md border border-purple-100">日租</span>`;
+
+                const tr = document.createElement("tr");
+                tr.className = `${rowBg} hover:bg-gray-50/50 transition-colors`;
+                tr.innerHTML = `
+                    <td class="p-3 font-semibold text-gray-900">${m.name} ${isSelf ? '<span class="text-xs text-emerald-600 font-normal">(我)</span>' : ''}</td>
+                    <td class="p-3 text-center">${typeBadge}</td>
+                    <td class="p-3 text-center">${statusBadge}</td>
+                    <td class="p-3 text-right text-xs text-gray-400 font-mono">${calc.detail}</td>
+                    <td class="p-3 text-right font-bold text-emerald-600 font-mono text-base">${calc.cost}元</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // 使用者點擊切換 參加 / 不參加
+        function toggleAttendance(joinStatus) {
+            if (isDateLocked(selectedDate)) return;
+            currentUser.status[selectedDate] = joinStatus;
+            renderRegisterTab();
+        }
+
+        // 渲染 儲值資訊介面
+        function renderDepositTab() {
+            const tbody = document.getElementById("depositTableBody");
+            tbody.innerHTML = "";
+
+            members.filter(m => m.type === "季租" || m.deposit > 0).forEach(m => {
+                const tr = document.createElement("tr");
+                tr.className = "hover:bg-gray-50/50 transition-colors";
+                tr.innerHTML = `
+                    <td class="p-3 font-bold text-gray-900 text-base">${m.name}</td>
+                    <td class="p-3 text-right font-extrabold text-emerald-600 font-mono text-base">${m.deposit.toLocaleString()} 元</td>
+                    <td class="p-3 text-center">
+                        <button onclick="alert('${m.name} 的歷史扣款儲值紀錄模組開發中')" class="bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-600 text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 font-medium transition">
+                            記錄
+                        </button>
+                    </td>
+                    <td class="p-3 text-center">
+                        <span class="bg-emerald-50 text-emerald-700 text-xs px-2.5 py-1 rounded-full border border-emerald-100 font-medium">${m.tag}</span>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // 渲染 公費帳戶資訊
+        function renderPublicTab() {
+            document.getElementById("publicBalance").innerText = publicBalance.toLocaleString();
+            const container = document.getElementById("publicLogsContainer");
+            container.innerHTML = "";
+
+            publicLogs.forEach(log => {
+                const div = document.createElement("div");
+                div.className = "flex items-center justify-between p-3 bg-gray-50 border border-gray-100 rounded-xl hover:shadow-sm transition";
+                div.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <span class="text-xs text-gray-400 font-mono">${log.date}</span>
+                        <span class="bg-emerald-50 text-emerald-700 text-xs px-2 py-0.5 rounded-md border border-emerald-100 font-bold">${log.type}</span>
+                        <span class="text-sm font-semibold text-gray-700">${log.desc}</span>
+                    </div>
+                    <span class="font-bold text-emerald-600 font-mono">+${log.amount}</span>
+                `;
+                container.appendChild(div);
+            });
+        }
+    </script>
+</body>
+</html>
